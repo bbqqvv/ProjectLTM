@@ -1,12 +1,14 @@
 package model;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Email {
+public class Email implements Serializable {
+    private static final long serialVersionUID = 1L; // Thêm serialVersionUID
     private int id;
     private int senderId;
     private String recipientEmail;
@@ -25,20 +27,30 @@ public class Email {
         this.timestamp = timestamp;
         this.isRead = isRead;
     }
-    
-    
 
-    public Email(int senderId, String recipientEmail, String subject, String body, Timestamp timestamp,
-			boolean isRead) {
+    
+    public Email() {
 		super();
-		this.senderId = senderId;
-		this.recipientEmail = recipientEmail;
-		this.subject = subject;
-		this.body = body;
-		this.timestamp = timestamp;
-		this.isRead = isRead;
 	}
 
+
+	public Email(int senderId, String recipientEmail, String subject, String body, Timestamp timestamp, boolean isRead) {
+        this.senderId = senderId;
+        this.recipientEmail = recipientEmail;
+        this.subject = subject;
+        this.body = body;
+        this.timestamp = timestamp;
+        this.isRead = isRead;
+    }
+
+    public Email(int senderId, String recipientEmail, String subject, String body) {
+        this.senderId = senderId;
+        this.recipientEmail = recipientEmail;
+        this.subject = subject;
+        this.body = body;
+        this.timestamp = new Timestamp(System.currentTimeMillis()); // Tạo timestamp mặc định
+        this.isRead = false; // Mặc định chưa đọc
+    }
 
 
 	// Getters và Setters

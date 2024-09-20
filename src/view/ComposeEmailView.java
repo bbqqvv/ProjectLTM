@@ -1,166 +1,87 @@
-// ComposeEmailView.java
 package view;
+
+import controller.EmailController;
+import model.Email;
+
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.File;
-import controller.EmailController;
+import java.sql.Timestamp;
 
 public class ComposeEmailView extends JFrame {
     private JTextField recipientField;
     private JTextField subjectField;
     private JTextArea bodyArea;
-    private JButton attachButton;
-    private JButton sendButton;
     private EmailManagementView emailManagementView;
     private EmailController emailController;
-    private File attachment;
 
-    public ComposeEmailView(EmailManagementView emailManagementView) {
+    public ComposeEmailView(EmailManagementView emailManagementView, String host, String username, String password) {
         this.emailManagementView = emailManagementView;
-        this.emailController = new EmailController(emailManagementView);
-        init();
+        this.emailController = new EmailController(this, host, username, password);
+        setTitle("Compose Email");
+        setSize(500, 400);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+        initialize();
     }
 
-    private void init() {
-        // Set up frame
-        this.setTitle("Compose New Email");
-        this.setSize(600, 500);
-        this.setLocationRelativeTo(null);
-        this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        this.setLayout(new BorderLayout());
+    private void initialize() {
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(new Color(250, 250, 250)); // Subtle background color
 
-        // Main panel
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
+        recipientField = new JTextField();
+        subjectField = new JTextField();
+        bodyArea = new JTextArea();
+        JButton sendButton = new JButton("Send");
 
-        Font labelFont = new Font("Arial", Font.PLAIN, 16);
-        Font textFieldFont = new Font("Arial", Font.PLAIN, 14);
-        Font buttonFont = new Font("Arial", Font.BOLD, 16);
-
-        // Recipient field
-        JLabel recipientLabel = new JLabel("To:");
-        recipientLabel.setFont(labelFont);
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.EAST;
-        mainPanel.add(recipientLabel, gbc);
-
-        recipientField = new JTextField(30);
-        recipientField.setFont(textFieldFont);
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        mainPanel.add(recipientField, gbc);
-
-        // Subject field
-        JLabel subjectLabel = new JLabel("Subject:");
-        subjectLabel.setFont(labelFont);
-        gbc.gridy = 1;
-        gbc.gridx = 0;
-        gbc.anchor = GridBagConstraints.EAST;
-        mainPanel.add(subjectLabel, gbc);
-
-        subjectField = new JTextField(30);
-        subjectField.setFont(textFieldFont);
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.WEST;
-        mainPanel.add(subjectField, gbc);
-
-        // Body field
-        JLabel bodyLabel = new JLabel("Body:");
-        bodyLabel.setFont(labelFont);
-        gbc.gridy = 2;
-        gbc.gridx = 0;
-        gbc.anchor = GridBagConstraints.NORTHEAST;
-        mainPanel.add(bodyLabel, gbc);
-
-        bodyArea = new JTextArea(10, 30);
-        bodyArea.setFont(textFieldFont);
-        bodyArea.setLineWrap(true);
-        bodyArea.setWrapStyleWord(true);
-        JScrollPane scrollPane = new JScrollPane(bodyArea);
-        gbc.gridx = 1;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        mainPanel.add(scrollPane, gbc);
-
-        // Button panel with improved layout
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
-        
-        sendButton = new JButton("Send");
-        sendButton.setFont(buttonFont);
-        sendButton.setIcon(new ImageIcon("icons/send.png")); // Add an icon for send button
-        sendButton.setBackground(new Color(0, 150, 136));
+        // Customize button
+        sendButton.setFont(new Font("Arial", Font.BOLD, 16));
+        sendButton.setBackground(new Color(46, 204, 113));
         sendButton.setForeground(Color.WHITE);
-        sendButton.setOpaque(true);
-        sendButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        buttonPanel.add(sendButton);
+        sendButton.setIcon(new ImageIcon("send_icon.png")); // Use an icon
+        sendButton.setFocusPainted(false);
 
-        attachButton = new JButton("Attach File");
-        attachButton.setFont(buttonFont);
-        attachButton.setIcon(new ImageIcon("icons/attach.png")); // Add an icon for attach button
-        attachButton.setBackground(new Color(0, 150, 136));
-        attachButton.setForeground(Color.WHITE);
-        attachButton.setOpaque(true);
-        attachButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        buttonPanel.add(attachButton);
+        sendButton.addActionListener(e -> sendEmail());
 
-        // Add action listeners for buttons
-        attachButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser();
-                int returnValue = fileChooser.showOpenDialog(null);
-                if (returnValue == JFileChooser.APPROVE_OPTION) {
-                    attachment = fileChooser.getSelectedFile();
-                    JOptionPane.showMessageDialog(null, "File attached: " + attachment.getName());
-                }
-            }
-        });
+        JPanel panel = new JPanel(new GridLayout(6, 1, 10, 10)); // Adjusted layout and spacing
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
+        panel.setBackground(Color.WHITE); // Panel background
 
-        sendButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendEmail();
-            }
-        });
+        JLabel toLabel = new JLabel("To:");
+        toLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        panel.add(toLabel);
+        panel.add(recipientField);
 
-        // Add components to frame
-        this.add(mainPanel, BorderLayout.CENTER);
-        this.add(buttonPanel, BorderLayout.SOUTH);
+        JLabel subjectLabel = new JLabel("Subject:");
+        subjectLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        panel.add(subjectLabel);
+        panel.add(subjectField);
 
-        this.setVisible(true);
+        JLabel bodyLabel = new JLabel("Body:");
+        bodyLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        panel.add(bodyLabel);
+        panel.add(new JScrollPane(bodyArea));
+
+        panel.add(sendButton);
+
+        add(panel, BorderLayout.CENTER);
+        setVisible(true);
     }
 
     private void sendEmail() {
-        String recipient = recipientField.getText();
-        String subject = subjectField.getText();
-        String body = bodyArea.getText();
+        String recipient = recipientField.getText().trim();
+        String subject = subjectField.getText().trim();
+        String body = bodyArea.getText().trim();
+        int senderId = emailManagementView.getUser().getId();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 
-        int senderId = getCurrentUserId(); // Get actual user ID
-
-        boolean success;
-        if (attachment != null) {
-            success = emailController.sendEmailWithAttachment(senderId, recipient, subject, body, attachment);
-        } else {
-            success = emailController.sendEmail(senderId, recipient, subject, body);
+        if (recipient.isEmpty() || subject.isEmpty() || body.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        if (success) {
-            JOptionPane.showMessageDialog(this, "Email sent successfully!");
-            emailManagementView.refreshEmailList(); // Update email list
-            this.dispose();
-        } else {
-            JOptionPane.showMessageDialog(this, "Failed to send email.");
-        }
-    }
-
-    private int getCurrentUserId() {
-        return emailManagementView.getUser().getId(); // Use method to get the actual logged-in user's ID
+        Email email = new Email(senderId, recipient, subject, body, timestamp, false);
+        emailController.sendEmail(email);
+        emailManagementView.addEmail(email);
+        dispose();
     }
 }

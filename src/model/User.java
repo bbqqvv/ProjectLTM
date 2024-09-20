@@ -1,12 +1,13 @@
 package model;
 
 import java.sql.Timestamp;
+import java.util.Objects;
 
 public class User {
     private int id;
     private String fullname;
     private String email;
-    private String password;
+    private String password; // Ideally, this should not be stored directly in the model
     private String imageProfile;
     private String role;
     private String bio;
@@ -22,7 +23,7 @@ public class User {
         this.id = id;
         this.fullname = fullname;
         this.email = email;
-        this.password = password;
+        this.password = password; // Consider not using this
         this.imageProfile = imageProfile;
         this.role = role;
         this.bio = bio;
@@ -32,7 +33,17 @@ public class User {
         this.isActive = isActive;
     }
 
-    // Getters and Setters
+    public User() {
+		super();
+	}
+
+	public User(String email, String password) {
+		super();
+		this.email = email;
+		this.password = password;
+	}
+
+	// Getters and Setters
     public int getId() {
         return id;
     }
@@ -61,6 +72,7 @@ public class User {
         return password;
     }
 
+    // Consider removing setPassword if not storing password directly
     public void setPassword(String password) {
         this.password = password;
     }
@@ -119,5 +131,44 @@ public class User {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        User user = (User) o;
+        return id == user.id &&
+                isActive == user.isActive &&
+                Objects.equals(fullname, user.fullname) &&
+                Objects.equals(email, user.email) &&
+                Objects.equals(password, user.password) &&
+                Objects.equals(imageProfile, user.imageProfile) &&
+                Objects.equals(role, user.role) &&
+                Objects.equals(bio, user.bio) &&
+                Objects.equals(createdAt, user.createdAt) &&
+                Objects.equals(updatedAt, user.updatedAt) &&
+                Objects.equals(lastLoginAt, user.lastLoginAt);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, fullname, email, password, imageProfile, role, bio, createdAt, updatedAt, lastLoginAt, isActive);
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", fullname='" + fullname + '\'' +
+                ", email='" + email + '\'' +
+                ", imageProfile='" + imageProfile + '\'' +
+                ", role='" + role + '\'' +
+                ", bio='" + bio + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", lastLoginAt=" + lastLoginAt +
+                ", isActive=" + isActive +
+                '}';
     }
 }

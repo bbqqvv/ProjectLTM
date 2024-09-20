@@ -1,56 +1,57 @@
 package view;
 
+import model.Email;
+
 import javax.swing.*;
 import java.awt.*;
 
-public class EmailDetailView extends JDialog {
-    private JTextArea textArea;
-    private JLabel senderLabel;
-    private JLabel profileImageLabel;
+public class EmailDetailView {
+    private JFrame frame;
+    private JTextArea emailContent;
 
-    public EmailDetailView(Frame owner, String emailDetails, String senderName, ImageIcon senderImage) {
-        super(owner, "Email Details", true);
-        setSize(400, 400);
-        setLocationRelativeTo(owner);
-        setLayout(new BorderLayout());
+    public EmailDetailView(Email email) {
+        initialize(email);
+    }
 
-        // Panel cho thông tin người gửi
-        JPanel senderPanel = new JPanel();
-        senderPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+    private void initialize(Email email) {
+        frame = new JFrame("Email Details");
+        frame.setSize(400, 500);
+        frame.setLocationRelativeTo(null);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
 
-        // Nhãn ảnh đại diện
-        profileImageLabel = new JLabel();
-        if (senderImage != null) {
-            Image img = senderImage.getImage().getScaledInstance(50, 50, Image.SCALE_SMOOTH);
-            profileImageLabel.setIcon(new ImageIcon(img));
-        } else {
-            profileImageLabel.setText("No image");
-        }
-        senderPanel.add(profileImageLabel);
+        // Tiêu đề email
+        JLabel emailHeader = new JLabel(String.format("From: %s  |  To: %s  |  Date: %s",
+                email.getSenderId(), email.getRecipientEmail(), email.getTimestamp()));
+        emailHeader.setFont(new Font("Arial", Font.PLAIN, 14));
+        frame.add(emailHeader, BorderLayout.NORTH);
 
-        // Nhãn tên người gửi
-        senderLabel = new JLabel(senderName);
-        senderLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        senderPanel.add(senderLabel);
+        // Nội dung email
+        emailContent = new JTextArea(email.getBody());
+        emailContent.setFont(new Font("Arial", Font.PLAIN, 14));
+        emailContent.setWrapStyleWord(true);
+        emailContent.setLineWrap(true);
+        emailContent.setEditable(false); // Mặc định là không thể chỉnh sửa
+        JScrollPane scrollPane = new JScrollPane(emailContent);
+        frame.add(scrollPane, BorderLayout.CENTER);
 
-        add(senderPanel, BorderLayout.NORTH);
-
-        // Khu vực chi tiết email
-        textArea = new JTextArea(emailDetails);
-        textArea.setEditable(false);
-        textArea.setFont(new Font("Arial", Font.PLAIN, 14));
-        textArea.setBackground(new Color(240, 240, 240));
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        add(scrollPane, BorderLayout.CENTER);
-
-        // Nút đóng
-        JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dispose());
+        // Nút để đóng hoặc chỉnh sửa
         JPanel buttonPanel = new JPanel();
+        JButton closeButton = new JButton("Đóng");
+        closeButton.addActionListener(e -> frame.dispose());
+        JButton editButton = new JButton("Chỉnh sửa");
+        editButton.addActionListener(e -> enableEditMode());
+
         buttonPanel.add(closeButton);
-        add(buttonPanel, BorderLayout.SOUTH);
+        buttonPanel.add(editButton);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
+
+        frame.setVisible(true);
+    }
+
+    // Cho phép người dùng chỉnh sửa nội dung email
+    private void enableEditMode() {
+        emailContent.setEditable(true);
+        emailContent.setBackground(new Color(255, 255, 224)); // Thay đổi màu nền để người dùng biết họ có thể chỉnh sửa
     }
 }

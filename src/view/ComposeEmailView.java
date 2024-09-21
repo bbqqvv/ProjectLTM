@@ -26,45 +26,48 @@ public class ComposeEmailView extends JFrame {
 
     private void initialize() {
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(250, 250, 250)); // Subtle background color
+        getContentPane().setBackground(new Color(250, 250, 250));
 
         recipientField = new JTextField();
         subjectField = new JTextField();
         bodyArea = new JTextArea();
-        JButton sendButton = new JButton("Send");
+        JButton sendButton = createSendButton();
 
-        // Customize button
-        sendButton.setFont(new Font("Arial", Font.BOLD, 16));
-        sendButton.setBackground(new Color(46, 204, 113));
-        sendButton.setForeground(Color.WHITE);
-        sendButton.setIcon(new ImageIcon("send_icon.png")); // Use an icon
-        sendButton.setFocusPainted(false);
+        JPanel panel = new JPanel(new GridLayout(6, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(Color.WHITE);
 
-        sendButton.addActionListener(e -> sendEmail());
-
-        JPanel panel = new JPanel(new GridLayout(6, 1, 10, 10)); // Adjusted layout and spacing
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
-        panel.setBackground(Color.WHITE); // Panel background
-
-        JLabel toLabel = new JLabel("To:");
-        toLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(toLabel);
-        panel.add(recipientField);
-
-        JLabel subjectLabel = new JLabel("Subject:");
-        subjectLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(subjectLabel);
-        panel.add(subjectField);
-
-        JLabel bodyLabel = new JLabel("Body:");
-        bodyLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(bodyLabel);
-        panel.add(new JScrollPane(bodyArea));
-
+        addComponentsToPanel(panel);
         panel.add(sendButton);
 
         add(panel, BorderLayout.CENTER);
         setVisible(true);
+    }
+
+    private JButton createSendButton() {
+        JButton sendButton = new JButton("Send");
+        sendButton.setFont(new Font("Arial", Font.BOLD, 16));
+        sendButton.setBackground(new Color(46, 204, 113));
+        sendButton.setForeground(Color.WHITE);
+        sendButton.setIcon(new ImageIcon("send_icon.png"));
+        sendButton.setFocusPainted(false);
+        sendButton.addActionListener(e -> sendEmail());
+        return sendButton;
+    }
+
+    private void addComponentsToPanel(JPanel panel) {
+        panel.add(createLabel("To:"));
+        panel.add(recipientField);
+        panel.add(createLabel("Subject:"));
+        panel.add(subjectField);
+        panel.add(createLabel("Body:"));
+        panel.add(new JScrollPane(bodyArea));
+    }
+
+    private JLabel createLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Arial", Font.BOLD, 14));
+        return label;
     }
 
     private void sendEmail() {
@@ -84,4 +87,9 @@ public class ComposeEmailView extends JFrame {
         emailManagementView.addEmail(email);
         dispose();
     }
+
+    public EmailManagementView getEmailManagementView() {
+        return emailManagementView;
+    }
+
 }

@@ -4,6 +4,7 @@ import controller.EmailController;
 import model.Email;
 import model.User;
 import network.EmailReceiver;
+import dao.EmailDao;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,25 +21,14 @@ public class EmailManagementView {
 
     public EmailManagementView(User user) {
         this.user = user;
-        String host = "smtp.gmail.com"; // Địa chỉ máy chủ SMTP Gmail
-        String username = user.getEmail(); 
-        String password = user.getPassword(); 
+        String host = "imap.gmail.com"; // Địa chỉ máy chủ IMAP Gmail
+        String username = user.getEmail();
+        String password = user.getPassword();
 
-        // Kiểm tra thông tin xác thực
-        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
-            throw new IllegalArgumentException("Email và mật khẩu không được để trống.");
-        }
-
-        this.emailController = new EmailController(host, username, password);
-
-        try {
-            EmailReceiver emailReceiver = new EmailReceiver(this);
-            emailReceiver.startReceiving();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        this.emailController = new EmailController(this, host, username, password);
 
         initialize();
+        loadEmails();
     }
 
     private void initialize() {
@@ -51,50 +41,20 @@ public class EmailManagementView {
         addHeader();
         addSidebar();
         addEmailList();
-        loadEmails();
 
         frame.setVisible(true);
         frame.setResizable(false);
     }
 
-    private void addHeader() {
-        JPanel headerPanel = new JPanel();
-        headerPanel.setBackground(new Color(0, 150, 136));
-        JLabel welcomeLabel = new JLabel("Email Management System");
-        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        welcomeLabel.setForeground(Color.WHITE);
-        headerPanel.add(welcomeLabel);
-        frame.getContentPane().add(headerPanel, BorderLayout.NORTH);
-    }
-
-    private void addSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(new FlowLayout(FlowLayout.LEFT));
-        sidebar.setPreferredSize(new Dimension(200, 0));
-        sidebar.setBackground(new Color(240, 240, 240));
-
-        JButton composeButton = createSidebarButton("Compose Email", null);
-        composeButton.addActionListener(e -> openComposeEmailWindow());
-        sidebar.add(composeButton);
-
-        JButton deleteButton = createSidebarButton("Delete Email", null);
-        deleteButton.addActionListener(e -> deleteSelectedEmail());
-        sidebar.add(deleteButton);
-
-        frame.add(sidebar, BorderLayout.WEST);
-    }
-
-    private JButton createSidebarButton(String text, String iconPath) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Arial", Font.BOLD, 14));
-        button.setBackground(new Color(0, 150, 136));
-        button.setForeground(Color.WHITE);
-        button.setOpaque(true);
-        button.setPreferredSize(new Dimension(180, 40));
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        return button;
+    private void loadEmails() {
+        try {
+            EmailDao emailDao = emailController.getEmailDao(); // Giả định bạn có phương thức này
+            EmailReceiver emailReceiver = new EmailReceiver(this, emailDao, "imap.gmail.com", user.getEmail(), user.getPassword());
+            emailReceiver.receiveEmailsViaIMAP();
+            loadEmailsFromDatabase();
+        } catch (Exception e) {
+            showMessage("Error loading emails: " + e.getMessage());
+        }
     }
 
     private void addEmailList() {
@@ -122,25 +82,62 @@ public class EmailManagementView {
         });
     }
 
+    private void addHeader() {
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBackground(new Color(0, 150, 136));
+        JLabel welcomeLabel = new JLabel("Email Management System");
+        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        welcomeLabel.setForeground(Color.WHITE);
+        headerPanel.add(welcomeLabel);
+        frame.getContentPane().add(headerPanel, BorderLayout.NORTH);
+    }
+
+    private void addSidebar() {
+        JPanel sidebar = new JPanel();
+        sidebar.setLayout(new FlowLayout(FlowLayout.LEFT));
+        sidebar.setPreferredSize(new Dimension(200, 0));
+        sidebar.setBackground(new Color(240, 240, 240));
+
+        JButton composeButton = createSidebarButton("Compose Email");
+        composeButton.addActionListener(e -> openComposeEmailWindow());
+        sidebar.add(composeButton);
+
+        JButton deleteButton = createSidebarButton("Delete Email");
+        deleteButton.addActionListener(e -> deleteSelectedEmail());
+        sidebar.add(deleteButton);
+
+        frame.add(sidebar, BorderLayout.WEST);
+    }
+
+    private JButton createSidebarButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setBackground(new Color(0, 150, 136));
+        button.setForeground(Color.WHITE);
+        button.setOpaque(true);
+        button.setPreferredSize(new Dimension(180, 40));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        return button;
+    }
+
     private void showEmailDetails(Email email) {
-        // Tách cửa sổ hiển thị chi tiết email
-        new EmailDetailView(email);
+        new EmailDetailView(email); // Hiển thị chi tiết email
     }
 
     private void openComposeEmailWindow() {
-        String host = "smtp.gmail.com"; // Địa chỉ máy chủ SMTP Gmail
-        String username = user.getEmail(); 
-        String password = user.getPassword(); 
-
-        ComposeEmailView composeEmailView = new ComposeEmailView(this, host, username, password);
+        ComposeEmailView composeEmailView = new ComposeEmailView(this, "smtp.gmail.com", user.getEmail(), user.getPassword());
         composeEmailView.setVisible(true);
     }
 
     public void addEmail(Email email) {
-        String emailDisplay = String.format("From: %s | Subject: %s | Date: %s",
+        String emailDisplay = String.format("<html><strong>From:</strong> %s <br><strong>Subject:</strong> %s <br><strong>Date:</strong> %s</html>",
                 email.getSenderId(), email.getSubject(), email.getTimestamp());
+        
         listModel.addElement(emailDisplay);
         emailListData.add(email);
+        emailController.saveEmailIfValidSender(email); // Lưu email vào cơ sở dữ liệu
     }
 
     public User getUser() {
@@ -156,13 +153,15 @@ public class EmailManagementView {
                 emailListData.remove(selectedIndex);
             }
         } else {
-            JOptionPane.showMessageDialog(frame, "Vui lòng chọn email để xóa.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            showMessage("Vui lòng chọn email để xóa.");
         }
     }
 
-    private void loadEmails() {
-        // Giả lập tải email
-        // Thực tế, bạn sẽ lấy từ cơ sở dữ liệu hoặc nguồn khác
+    private void loadEmailsFromDatabase() {
+        List<Email> emails = emailController.loadEmailsFromDatabase(user.getId());
+        for (Email email : emails) {
+            addEmail(email);
+        }
     }
 
     public void showMessage(String message) {

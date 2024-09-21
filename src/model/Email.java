@@ -34,6 +34,14 @@ public class Email implements Serializable {
 	}
 
 
+	public Email(String recipientEmail, String subject, String body) {
+		super();
+		this.recipientEmail = recipientEmail;
+		this.subject = subject;
+		this.body = body;
+	}
+
+
 	public Email(int senderId, String recipientEmail, String subject, String body, Timestamp timestamp, boolean isRead) {
         this.senderId = senderId;
         this.recipientEmail = recipientEmail;

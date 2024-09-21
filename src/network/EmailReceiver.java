@@ -2,52 +2,75 @@ package network;
 
 import model.Email;
 import view.EmailManagementView;
+import dao.EmailDao;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import javax.mail.*;
+import java.sql.Timestamp;
+import java.util.Properties;
 
 public class EmailReceiver {
-    private DatagramSocket socket;
     private EmailManagementView emailManagementView;
+    private EmailDao emailDao;
+    private String host;
+    private String username;
+    private String password;
+    private static final int MAX_EMAILS = 50; // Giới hạn số lượng email nhận
 
-    public EmailReceiver(EmailManagementView emailManagementView) throws Exception {
+    public EmailReceiver(EmailManagementView emailManagementView, EmailDao emailDao, String host, String username, String password) {
         this.emailManagementView = emailManagementView;
-        socket = new DatagramSocket(9876);
-        startReceiving();
+        this.emailDao = emailDao;
+        this.host = host;  // IMAP host (ví dụ: "imap.gmail.com")
+        this.username = username;  // Địa chỉ email
+        this.password = password;  // Mật khẩu ứng dụng (được tạo từ Google)
     }
 
-    public void startReceiving() {
-        new Thread(() -> {
-            try {
-                while (true) {
-                    byte[] buffer = new byte[1024];
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    socket.receive(packet);
-                    Email email = deserialize(packet.getData());
-                    if (email != null) {
-                        emailManagementView.addEmail(email);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace(); // Handle exception
+    public void receiveEmailsViaIMAP() {
+        try {
+            Properties properties = new Properties();
+            properties.put("mail.store.protocol", "imap");
+            properties.put("mail.imap.host", host);
+            properties.put("mail.imap.port", "993");
+            properties.put("mail.imap.ssl.enable", "true");
+
+            Session emailSession = Session.getDefaultInstance(properties);
+            Store store = emailSession.getStore("imap");
+            store.connect(username, password);
+
+            Folder emailFolder = store.getFolder("INBOX");
+            emailFolder.open(Folder.READ_ONLY);
+
+            Message[] messages = emailFolder.getMessages();
+            int emailCount = Math.min(messages.length, MAX_EMAILS); // Giới hạn số lượng email
+
+            for (int i = messages.length - emailCount; i < messages.length; i++) {
+                Email email = createEmailFromMessage(messages[i]);
+                emailDao.saveEmail(email);  // Lưu email vào cơ sở dữ liệu
+                emailManagementView.addEmail(email);  // Hiển thị email lên giao diện
             }
-        }).start();
-    }
 
-    private Email deserialize(byte[] data) {
-        try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(data);
-             java.io.ObjectInputStream in = new java.io.ObjectInputStream(bis)) {
-            return (Email) in.readObject();
+            emailFolder.close(false);
+            store.close();
         } catch (Exception e) {
-            System.err.println("Failed to deserialize email: " + e.getMessage());
-            e.printStackTrace(); // Detailed error output
-            return null;
+            e.printStackTrace();
+            emailManagementView.showMessage("Error receiving emails: " + e.getMessage());
         }
     }
 
-    public void stopReceiving() {
-        if (socket != null && !socket.isClosed()) {
-            socket.close(); // Clean up the socket
-        }
+    private Email createEmailFromMessage(Message message) throws Exception {
+        String subject = message.getSubject();
+        String from = message.getFrom()[0].toString();
+        String content = message.getContent().toString();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+
+        // Giả định senderId là id của người dùng hiện tại (cần lấy từ User)
+        int senderId = getUserIdFromEmail(from); // Một phương thức bạn cần định nghĩa
+
+        return new Email(senderId, username, subject, content, timestamp, false);
+    }
+
+    private int getUserIdFromEmail(String email) {
+        // Xử lý logic để lấy ID người dùng từ email
+        // Trả về ID giả định cho ví dụ
+        return 1; // Thay đổi theo cách bạn lưu trữ ID người dùng
     }
 }

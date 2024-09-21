@@ -58,6 +58,14 @@ public class LoginController implements ActionListener {
 
         // Nếu xác thực thành công, tiếp tục với logic đăng nhập
         User user = new User(email, password); // Giả định user được tạo với email và password
+        
+        
+        // Kiểm tra người dùng trong cơ sở dữ liệu
+        if (user == null) {
+            JOptionPane.showMessageDialog(loginView, "Sai email hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         JOptionPane.showMessageDialog(loginView, "Đăng nhập thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 
         // Khởi tạo EmailManagementView với đúng thông tin

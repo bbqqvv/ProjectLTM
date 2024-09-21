@@ -12,18 +12,21 @@ import model.Email;
 
 public class EmailDao {
 
-    public void saveEmail(int senderId, String recipientEmail, String subject, String body, Timestamp timestamp, boolean isRead) throws SQLException {
+    public void saveEmail(Email email) throws SQLException {
+        if (!isSenderValid(email.getSenderId())) {
+            throw new SQLException("Sender ID is invalid.");
+        }
+
         String query = "INSERT INTO emails (sender_id, recipient_email, subject, body, timestamp, is_read) VALUES (?, ?, ?, ?, ?, ?)";
-        
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-             
-            preparedStatement.setInt(1, senderId);
-            preparedStatement.setString(2, recipientEmail);
-            preparedStatement.setString(3, subject);
-            preparedStatement.setString(4, body);
-            preparedStatement.setTimestamp(5, timestamp);
-            preparedStatement.setBoolean(6, isRead);
+
+            preparedStatement.setInt(1, email.getSenderId());
+            preparedStatement.setString(2, email.getRecipientEmail());
+            preparedStatement.setString(3, email.getSubject());
+            preparedStatement.setString(4, email.getBody());
+            preparedStatement.setTimestamp(5, email.getTimestamp());
+            preparedStatement.setBoolean(6, email.isRead());
             preparedStatement.executeUpdate();
         }
     }
@@ -34,24 +37,14 @@ public class EmailDao {
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-             
-            String userEmail = getUserEmailById(userId); // Lấy email của người dùng
 
+            String userEmail = getEmailById(userId);
             preparedStatement.setInt(1, userId);
-            preparedStatement.setString(2, userEmail); 
+            preparedStatement.setString(2, userEmail);
 
             ResultSet resultSet = preparedStatement.executeQuery();
-
             while (resultSet.next()) {
-                Email email = new Email(
-                    resultSet.getInt("sender_id"),
-                    resultSet.getString("recipient_email"),
-                    resultSet.getString("subject"),
-                    resultSet.getString("body"),
-                    resultSet.getTimestamp("timestamp"),
-                    resultSet.getBoolean("is_read")
-                );
-                emails.add(email);
+                emails.add(mapToEmail(resultSet));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -59,34 +52,44 @@ public class EmailDao {
         return emails;
     }
 
-    private String getUserEmailById(int userId) {
-        String email = null;
+    private boolean isSenderValid(int senderId) {
+        String query = "SELECT COUNT(*) FROM users WHERE id = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setInt(1, senderId);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return resultSet.next() && resultSet.getInt(1) > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private String getEmailById(int userId) {
         String query = "SELECT email FROM users WHERE id = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-             
+
             preparedStatement.setInt(1, userId);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                email = resultSet.getString("email");
+                return resultSet.getString("email");
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return email;
+        return null;
     }
 
-    public void saveAttachment(int emailId, String fileName, String filePath) {
-        String query = "INSERT INTO attachments (email_id, file_name, file_path) VALUES (?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-             
-            stmt.setInt(1, emailId);
-            stmt.setString(2, fileName);
-            stmt.setString(3, filePath);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    private Email mapToEmail(ResultSet resultSet) throws SQLException {
+        return new Email(
+            resultSet.getInt("sender_id"),
+            resultSet.getString("recipient_email"),
+            resultSet.getString("subject"),
+            resultSet.getString("body"),
+            resultSet.getTimestamp("timestamp"),
+            resultSet.getBoolean("is_read")
+        );
     }
 }

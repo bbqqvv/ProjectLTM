@@ -1,62 +1,102 @@
 package view;
 
-import controller.EmailController;
-import model.Email;
-import model.User;
-import network.EmailReceiver;
-import dao.EmailDao;
-
-import javax.swing.*;
 import java.awt.*;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.*;
+import controller.EmailController;
+import dao.EmailDao;
+import model.Email;
+import model.Session;
+import model.User;
+import network.EmailReceiver;
+import network.UdpNotifier;
+import until.UserIpMapping;
 
 public class EmailManagementView {
     private JFrame frame;
     private JList<String> emailList;
     private DefaultListModel<String> listModel;
     private User user;
+    private Session session;
     private EmailController emailController;
     private List<Email> emailListData = new ArrayList<>();
+    private UdpNotifier udpNotifier;
+    private boolean isReceivingEmails = false;
+	private UserIpMapping userIpMapping;
 
     public EmailManagementView(User user) {
         this.user = user;
-        String host = "imap.gmail.com"; // Địa chỉ máy chủ IMAP Gmail
+        this.session = new Session(user.getId(), getUserIpAddress(), user.getEmail());
+        String host = "imap.gmail.com";
         String username = user.getEmail();
         String password = user.getPassword();
-
         this.emailController = new EmailController(this, host, username, password);
-
         initialize();
         loadEmails();
     }
 
     private void initialize() {
         frame = new JFrame("Email Management - " + user.getFullname());
-        frame.setSize(800, 500);
+        frame.setSize(1200, 800);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
         frame.getContentPane().setLayout(new BorderLayout());
 
         addHeader();
         addSidebar();
+        addSearchFeature();
+        addFilterFeature();
         addEmailList();
 
         frame.setVisible(true);
         frame.setResizable(false);
     }
 
-    private void loadEmails() {
+    private String getUserIpAddress() {
         try {
-            EmailDao emailDao = emailController.getEmailDao(); // Giả định bạn có phương thức này
-            EmailReceiver emailReceiver = new EmailReceiver(this, emailDao, "imap.gmail.com", user.getEmail(), user.getPassword());
-            emailReceiver.receiveEmailsViaIMAP();
-            loadEmailsFromDatabase();
+            return InetAddress.getLocalHost().getHostAddress();
         } catch (Exception e) {
-            showMessage("Error loading emails: " + e.getMessage());
+            e.printStackTrace();
+            return "127.0.0.1";
         }
     }
 
+    private void loadEmails() {
+        if (!isReceivingEmails) {
+            showMessage("Starting to receive emails...");
+            System.out.println("Initializing email receiver...");
+            SwingWorker<Void, Email> worker = new SwingWorker<Void, Email>() {
+                @Override
+                protected Void doInBackground() {
+                    try {
+                        EmailDao emailDao = emailController.getEmailDao();
+                        udpNotifier = new UdpNotifier(session.getIpAddress(), 9876);
+                        udpNotifier.sendNotification("Email received");
+                        System.out.println("UDP notification sent.");
+
+                        EmailReceiver emailReceiver = new EmailReceiver(EmailManagementView.this, emailDao, "imap.gmail.com", user.getEmail(), user.getPassword(), udpNotifier);
+                        emailReceiver.startReceivingEmails();
+                        isReceivingEmails = true;
+                        System.out.println("Email receiver started.");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showMessage("Error loading emails: " + e.getMessage());
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    showMessage("Started receiving emails.");
+                }
+            };
+            worker.execute();
+        } else {
+            showMessage("Already receiving emails.");
+        }
+    }
     private void addEmailList() {
         listModel = new DefaultListModel<>();
         emailList = new JList<>(listModel);
@@ -73,13 +113,18 @@ public class EmailManagementView {
                     int index = emailList.locationToIndex(e.getPoint());
                     if (index >= 0) {
                         Email selectedEmail = emailListData.get(index);
-                        if (selectedEmail != null) {
-                            showEmailDetails(selectedEmail);
-                        }
+                        showEmailDetails(selectedEmail);
                     }
                 }
             }
         });
+    }
+
+    public void refreshEmailList() {
+        listModel.clear();
+        for (Email email : emailListData) {
+            listModel.addElement(email.getSubject());
+        }
     }
 
     private void addHeader() {
@@ -106,7 +151,65 @@ public class EmailManagementView {
         deleteButton.addActionListener(e -> deleteSelectedEmail());
         sidebar.add(deleteButton);
 
+        JButton loadEmailsButton = createSidebarButton("Load Emails");
+        loadEmailsButton.addActionListener(e -> loadEmails());
+        sidebar.add(loadEmailsButton);
+
         frame.add(sidebar, BorderLayout.WEST);
+    }
+
+    private void addSearchFeature() {
+        JPanel searchPanel = new JPanel();
+        searchPanel.setLayout(new FlowLayout());
+
+        JTextField searchField = new JTextField(15);
+        JButton searchButton = new JButton("Search");
+
+        searchButton.addActionListener(e -> {
+            String query = searchField.getText().toLowerCase();
+            filterEmailList(query);
+        });
+
+        searchPanel.add(searchField);
+        searchPanel.add(searchButton);
+        frame.getContentPane().add(searchPanel, BorderLayout.NORTH);
+    }
+
+    private void filterEmailList(String query) {
+        listModel.clear();
+        for (Email email : emailListData) {
+            if (email.getSubject().toLowerCase().contains(query)) {
+                listModel.addElement(email.getSubject());
+            }
+        }
+    }
+
+    private void addFilterFeature() {
+        JPanel filterPanel = new JPanel();
+        filterPanel.setLayout(new FlowLayout());
+
+        String[] filterOptions = {"All", "Unread", "Important"};
+        JComboBox<String> filterComboBox = new JComboBox<>(filterOptions);
+
+        filterComboBox.addActionListener(e -> {
+            String selectedFilter = (String) filterComboBox.getSelectedItem();
+            filterEmailByStatus(selectedFilter);
+        });
+
+        filterPanel.add(new JLabel("Filter:"));
+        filterPanel.add(filterComboBox);
+        frame.getContentPane().add(filterPanel, BorderLayout.SOUTH);
+    }
+
+    private void filterEmailByStatus(String status) {
+        listModel.clear();
+        for (Email email : emailListData) {
+            if (status.equals("All") || 
+                (status.equals("Unread") && !email.isRead()) || 
+                (status.equals("Important") && email.isImportant())) {
+                listModel.addElement(email.getSubject());
+            }
+        }
     }
 
     private JButton createSidebarButton(String text) {
@@ -118,53 +221,39 @@ public class EmailManagementView {
         button.setPreferredSize(new Dimension(180, 40));
         button.setFocusPainted(false);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
         return button;
     }
 
     private void showEmailDetails(Email email) {
-        new EmailDetailView(email); // Hiển thị chi tiết email
+        new EmailDetailView(email);
     }
 
     private void openComposeEmailWindow() {
-        ComposeEmailView composeEmailView = new ComposeEmailView(this, "smtp.gmail.com", user.getEmail(), user.getPassword());
+        ComposeEmailView composeEmailView = new ComposeEmailView(this, "smtp.gmail.com", user.getEmail(), user.getPassword(), udpNotifier,userIpMapping );
         composeEmailView.setVisible(true);
-    }
-
-    public void addEmail(Email email) {
-        String emailDisplay = String.format("<html><strong>From:</strong> %s <br><strong>Subject:</strong> %s <br><strong>Date:</strong> %s</html>",
-                email.getSenderId(), email.getSubject(), email.getTimestamp());
-        
-        listModel.addElement(emailDisplay);
-        emailListData.add(email);
-        emailController.saveEmailIfValidSender(email); // Lưu email vào cơ sở dữ liệu
-    }
-
-    public User getUser() {
-        return this.user;
     }
 
     private void deleteSelectedEmail() {
         int selectedIndex = emailList.getSelectedIndex();
         if (selectedIndex >= 0) {
-            int confirmation = JOptionPane.showConfirmDialog(frame, "Bạn có chắc muốn xóa email này?", "Xác nhận", JOptionPane.YES_NO_OPTION);
-            if (confirmation == JOptionPane.YES_OPTION) {
-                listModel.remove(selectedIndex);
-                emailListData.remove(selectedIndex);
-            }
+            emailListData.remove(selectedIndex);
+            refreshEmailList();
+            showMessage("Email deleted successfully.");
         } else {
-            showMessage("Vui lòng chọn email để xóa.");
-        }
-    }
-
-    private void loadEmailsFromDatabase() {
-        List<Email> emails = emailController.loadEmailsFromDatabase(user.getId());
-        for (Email email : emails) {
-            addEmail(email);
+            showMessage("Please select an email to delete.");
         }
     }
 
     public void showMessage(String message) {
-        JOptionPane.showMessageDialog(frame, message, "Information", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(frame, message);
+    }
+
+    public void addEmail(Email email) {
+        emailListData.add(email);
+        refreshEmailList();
+        System.out.println("Email added: " + email.getSubject());
+    }
+    public User getUser() {
+        return user; // Trả về đối tượng User
     }
 }

@@ -1,12 +1,30 @@
 package view;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionListener;
 import java.util.Properties;
 import java.util.regex.Pattern;
-import javax.mail.*;
-import javax.mail.internet.*;
+
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+
+import network.UdpNotifier;
+import until.UserIpMapping;
 
 public class LoginView extends JFrame {
     private JTextField useremailField;
@@ -15,6 +33,8 @@ public class LoginView extends JFrame {
     private JCheckBox showPasswordCheckBox;
     private JButton loginButton;
     private JButton registerButton;
+	private UdpNotifier udpNotifier;
+	private UserIpMapping userIpMapping;
 
     public LoginView() {
         init();
@@ -228,7 +248,7 @@ public class LoginView extends JFrame {
         String username = getEmail();
         String password = getPassword();
 
-        ComposeEmailView composeEmailView = new ComposeEmailView(emailManagementView, host, username, password);
+        ComposeEmailView composeEmailView = new ComposeEmailView(emailManagementView, host, username, password, udpNotifier,userIpMapping );
         composeEmailView.setVisible(true); // Hiển thị cửa sổ soạn email
     }
 }

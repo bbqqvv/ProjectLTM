@@ -67,17 +67,17 @@ public class UserDao {
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
                 user = new User(
-                    resultSet.getInt("id"),
-                    resultSet.getString("fullname"),
-                    resultSet.getString("email"),
-                    null, // Không trả mật khẩu
-                    resultSet.getString("image_profile"),
-                    resultSet.getString("role"),
-                    resultSet.getString("bio"),
-                    resultSet.getTimestamp("created_at"),
-                    resultSet.getTimestamp("updated_at"),
-                    resultSet.getTimestamp("last_login_at"),
-                    resultSet.getBoolean("is_active")
+                	    resultSet.getInt("id"),
+                        resultSet.getString("fullname"),
+                        resultSet.getString("email"),
+                        null, // Don't return password for security reasons
+                        resultSet.getString("image_profile"),
+                        resultSet.getString("role"),
+                        resultSet.getString("bio"),
+                        resultSet.getTimestamp("created_at"),
+                        resultSet.getTimestamp("updated_at"),
+                        resultSet.getTimestamp("last_login_at"),
+                        resultSet.getBoolean("is_active")
                 );
             }
         } catch (SQLException e) {
@@ -130,7 +130,11 @@ public class UserDao {
             statement.setInt(1, senderId);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
-                return resultSet.getInt(1) > 0; // Trả về true nếu người gửi tồn tại
+                boolean exists = resultSet.getInt(1) > 0;
+                if (!exists) {
+                    System.err.println("Lỗi: Người gửi với ID " + senderId + " không tồn tại.");
+                }
+                return exists;
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -138,9 +142,10 @@ public class UserDao {
         return false; // Trả về false nếu có lỗi xảy ra
     }
 
+
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String query = "SELECT * FROM users";
+        String query = "SELECT * FROM users"; // Make sure 'users' table has 'ip_address' field
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
@@ -150,7 +155,7 @@ public class UserDao {
                     resultSet.getInt("id"),
                     resultSet.getString("fullname"),
                     resultSet.getString("email"),
-                    null, // Không trả mật khẩu
+                    null, // Don't return password for security reasons
                     resultSet.getString("image_profile"),
                     resultSet.getString("role"),
                     resultSet.getString("bio"),
@@ -166,9 +171,79 @@ public class UserDao {
         }
         return users;
     }
+    
+    
+    public void saveSession(int userId, String sessionToken, String ipAddress) {
+        if (isUserExists(userId)) {
+            String sql = "INSERT INTO sessions (user_id, session_token, ip_address) VALUES (?, ?, ?)";
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                
+                stmt.setInt(1, userId);
+                stmt.setString(2, sessionToken);
+                stmt.setString(3, ipAddress);
+                stmt.executeUpdate();
+                System.out.println("Session saved successfully for user ID: " + userId);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                System.err.println("Failed to save session for user ID " + userId + ": " + e.getMessage());
+            }
+        } else {
+            System.err.println("User ID " + userId + " không tồn tại, không thể lưu session.");
+        }
+    }
+
+    public boolean isUserExists(int userId) {
+        String query = "SELECT COUNT(*) FROM users WHERE id = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            
+            statement.setInt(1, userId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getInt(1) > 0; // True nếu user tồn tại
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false; // Trả về false nếu không tồn tại
+    }
+
+
 
     public boolean registerUser(String email, String password) {
         User newUser = new User(email, password);
         return saveUser(newUser);
     }
+
+    public User getUserById(int senderId) {
+        User user = null;
+        String query = "SELECT * FROM users WHERE id = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            
+            statement.setInt(1, senderId);
+            ResultSet resultSet = statement.executeQuery();
+            
+            if (resultSet.next()) {
+                user = new User(
+                    resultSet.getInt("id"),
+                    resultSet.getString("fullname"),
+                    resultSet.getString("email"),
+                    null, // Không trả về mật khẩu vì lý do bảo mật
+                    resultSet.getString("image_profile"),
+                    resultSet.getString("role"),
+                    resultSet.getString("bio"),
+                    resultSet.getTimestamp("created_at"),
+                    resultSet.getTimestamp("updated_at"),
+                    resultSet.getTimestamp("last_login_at"),
+                    resultSet.getBoolean("is_active")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return user;
+    }
+
 }

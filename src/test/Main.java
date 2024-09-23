@@ -1,9 +1,8 @@
 package test;
 
-import javax.swing.*;
+import controller.LoginController;
 import database.DatabaseConnection;
 import view.LoginView;
-import controller.LoginController;
 
 public class Main {
     public static void main(String[] args) {

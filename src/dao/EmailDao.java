@@ -4,9 +4,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+
 import database.DatabaseConnection;
 import model.Email;
 
@@ -28,28 +28,28 @@ public class EmailDao {
             preparedStatement.setTimestamp(5, email.getTimestamp());
             preparedStatement.setBoolean(6, email.isRead());
             preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error saving email: " + e.getMessage());
+            throw e; // Ném lại ngoại lệ để xử lý ở nơi gọi
         }
     }
 
-    public List<Email> getEmailsByUserId(int userId) {
-        List<Email> emails = new ArrayList<>();
-        String query = "SELECT * FROM emails WHERE sender_id = ? OR recipient_email = ?";
+    public List<Email> getSentEmailsByUserId(int userId) {
+        List<Email> sentEmails = new ArrayList<>();
+        String query = "SELECT * FROM emails WHERE sender_id = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query)) {
 
-            String userEmail = getEmailById(userId);
             preparedStatement.setInt(1, userId);
-            preparedStatement.setString(2, userEmail);
-
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                emails.add(mapToEmail(resultSet));
+                sentEmails.add(mapResultSetToEmail(resultSet));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error retrieving sent emails: " + e.getMessage());
         }
-        return emails;
+        return sentEmails;
     }
 
     private boolean isSenderValid(int senderId) {
@@ -61,7 +61,7 @@ public class EmailDao {
             ResultSet resultSet = preparedStatement.executeQuery();
             return resultSet.next() && resultSet.getInt(1) > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error checking sender validity: " + e.getMessage());
             return false;
         }
     }
@@ -77,13 +77,36 @@ public class EmailDao {
                 return resultSet.getString("email");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error retrieving email by user ID: " + e.getMessage());
         }
         return null;
     }
 
-    private Email mapToEmail(ResultSet resultSet) throws SQLException {
+    public List<Email> getEmailsByUserId(int userId) {
+        List<Email> emails = new ArrayList<>();
+        String query = "SELECT * FROM emails WHERE sender_id = ? OR recipient_email = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            String userEmail = getEmailById(userId);
+            preparedStatement.setInt(1, userId);
+            preparedStatement.setString(2, userEmail);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                emails.add(mapResultSetToEmail(resultSet));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving emails by user ID: " + e.getMessage());
+        }
+        return emails;
+    }
+
+    // Phương thức riêng để ánh xạ ResultSet thành đối tượng Email
+    private Email mapResultSetToEmail(ResultSet resultSet) throws SQLException {
         return new Email(
+            resultSet.getInt("id"),
             resultSet.getInt("sender_id"),
             resultSet.getString("recipient_email"),
             resultSet.getString("subject"),

@@ -16,24 +16,25 @@ public class User {
     private Timestamp lastLoginAt;
     private boolean isActive;
 
-    public User(int id, String fullname, String email, String password, 
-                String imageProfile, String role, String bio, 
-                Timestamp createdAt, Timestamp updatedAt, 
-                Timestamp lastLoginAt, boolean isActive) {
-        this.id = id;
-        this.fullname = fullname;
-        this.email = email;
-        this.password = password; // Consider not using this
-        this.imageProfile = imageProfile;
-        this.role = role;
-        this.bio = bio;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.lastLoginAt = lastLoginAt;
-        this.isActive = isActive;
-    }
 
-    public User() {
+
+    public User(int id, String fullname, String email, String password, String imageProfile, String role, String bio,
+			Timestamp updatedAt, Timestamp createdAt, Timestamp lastLoginAt, boolean isActive) {
+		super();
+		this.id = id;
+		this.fullname = fullname;
+		this.email = email;
+		this.password = password;
+		this.imageProfile = imageProfile;
+		this.role = role;
+		this.bio = bio;
+		this.createdAt = createdAt;
+		this.updatedAt = updatedAt;
+		this.lastLoginAt = lastLoginAt;
+		this.isActive = isActive;
+	}
+
+	public User() {
 		super();
 	}
 
@@ -133,7 +134,7 @@ public class User {
         isActive = active;
     }
 
-    @Override
+	@Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -171,4 +172,8 @@ public class User {
                 ", isActive=" + isActive +
                 '}';
     }
+
+
+
+
 }

@@ -1,23 +1,20 @@
 package until;
 
-import java.util.HashMap;
-import java.util.Map;
+import dao.SessionDao;
 
 public class UserIpMapping {
-    private Map<String, String> emailToIpMap = new HashMap<>();
-
-    public void addMapping(String email, String ipAddress) {
-        System.out.println("Adding mapping: " + email + " -> " + ipAddress);
-        emailToIpMap.put(email, ipAddress);
-    }
+    private SessionDao sessionDao = new SessionDao();
 
     public String getIpAddress(String email) {
-        String ipAddress = emailToIpMap.get(email);
-        if (ipAddress == null) {
-            System.out.println("No IP address found for: " + email);
-        } else {
+        System.out.println("Retrieving IP address for email: " + email);
+        String ipAddress = sessionDao.getIpAddressByEmail(email);
+        
+        if (ipAddress != null) {
             System.out.println("Found IP address for " + email + ": " + ipAddress);
+        } else {
+            System.out.println("No IP address found for: " + email);
         }
-        return ipAddress;
+        
+        return ipAddress; // Trả về địa chỉ IP hoặc null
     }
 }

@@ -19,12 +19,12 @@ import dao.UserDao;
 public class LoginController implements ActionListener {
     private LoginView loginView;
     private UserDao userDao;
-    private UserIpMapping userIpMapping; // Thêm trường UserIpMapping
+//    private UserIpMapping userIpMapping; // Thêm trường UserIpMapping
 
     public LoginController(LoginView loginView) {
         this.loginView = loginView;
         this.userDao = new UserDao();
-        this.userIpMapping = new UserIpMapping(); // Khởi tạo UserIpMapping
+//        this.userIpMapping = new UserIpMapping(); // Khởi tạo UserIpMapping
 
     }
 
@@ -72,7 +72,7 @@ public class LoginController implements ActionListener {
 
         // Lưu phiên làm việc cùng với địa chỉ IP
       userDao.saveSession(user1.getId(), sessionToken, userIpAddress); // Lưu thông tin phiên
-      userIpMapping.addMapping(email, userIpAddress);
+//      userIpMapping.addMapping(email, userIpAddress);
 
         JOptionPane.showMessageDialog(loginView, "Đăng nhập thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 

@@ -28,7 +28,7 @@ public class ComposeEmailView extends JFrame {
         this.emailManagementView = emailManagementView;
         this.emailController = new EmailController(this, host, username, password);
         this.udpNotifier = udpNotifier;
-        this.userIpMapping = userIpMapping; // Gán giá trị cho userIpMapping
+        this.userIpMapping = userIpMapping; // Đảm bảo đối tượng này không null
         setTitle("Compose Email");
         setSize(500, 500);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -141,30 +141,35 @@ public class ComposeEmailView extends JFrame {
         }
 
         Email email = createEmail(recipient, subject, body);
-        boolean isSent = emailController.sendEmail(email, attachedFilePath); // Gửi email với tệp đính kèm
+        boolean isSent = emailController.sendEmail(email, attachedFilePath);
 
         if (isSent) {
-            emailManagementView.addEmail(email);
-            
-            // Lấy địa chỉ IP từ ánh xạ
-            String recipientIpAddress = userIpMapping.getIpAddress(recipient);
-            System.out.println("Recipient IP Address: " + recipientIpAddress); // Debug thông tin IP
-            
-            if (recipientIpAddress != null) {
-                if (isIpReachable(recipientIpAddress)) {
-                    udpNotifier.sendNotification("New email sent to: " + recipient + " at IP: " + recipientIpAddress);
-                    System.out.println("Notification sent to IP: " + recipientIpAddress); // Debug thông báo
-                } else {
-                    System.out.println("IP address is not reachable: " + recipientIpAddress); // Debug thông báo
-                }
+            // Kiểm tra nếu emailManagementView không null và có phương thức addEmail
+            if (emailManagementView != null) {
+                emailManagementView.addEmail(email);
             } else {
-                udpNotifier.sendNotification("New email sent to: " + recipient + " (IP not found)");
-                System.out.println("IP address not found for recipient: " + recipient); // Debug thông báo
+                System.err.println("Error: emailManagementView is null or does not have addEmail method.");
             }
-       
+            
+            // Gửi thông báo về địa chỉ IP
+            handleIpNotification(recipient);
         }
         dispose();
-
+    }
+    private void handleIpNotification(String recipient) {
+        String recipientIpAddress = userIpMapping.getIpAddress(recipient);
+        if (recipientIpAddress != null) {
+            System.out.println("Recipient IP Address: " + recipientIpAddress);
+            if (isIpReachable(recipientIpAddress)) {
+                udpNotifier.sendNotification("New email sent to: " + recipient + " at IP: " + recipientIpAddress);
+                System.out.println("Notification sent to IP: " + recipientIpAddress);
+            } else {
+                System.out.println("IP address is not reachable: " + recipientIpAddress);
+            }
+        } else {
+            udpNotifier.sendNotification("New email sent to: " + recipient + " (IP not found)");
+            System.out.println("IP address not found for recipient: " + recipient);
+        }
     }
     private boolean isIpReachable(String ipAddress) {
         try {
@@ -175,6 +180,7 @@ public class ComposeEmailView extends JFrame {
             return false;
         }
     }
+
     private boolean isValidEmail(String email) {
         return email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
     }

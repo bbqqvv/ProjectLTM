@@ -11,6 +11,7 @@ import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.internet.MimeMultipart;
 import dao.EmailDao;
+import dao.SessionDao; // Thêm import cho SessionDao
 import model.Email;
 import view.EmailManagementView;
 import java.util.logging.Level;
@@ -21,6 +22,7 @@ public class EmailReceiver {
     
     private EmailManagementView emailManagementView;
     private EmailDao emailDao;
+    private SessionDao sessionDao; // Thêm trường SessionDao
     private String host;
     private String username;
     private String password;
@@ -28,17 +30,21 @@ public class EmailReceiver {
     private boolean running = true;
     private Set<String> receivedEmailSubjects = new HashSet<>();
     private final int CHECK_INTERVAL = 60000; // Kiểm tra mỗi 60 giây
-    private final int EMAIL_LIMIT = 10; // Giới hạn email nhận
 
-    public EmailReceiver(EmailManagementView emailManagementView, EmailDao emailDao, String host, String username, String password, UdpNotifier udpNotifier) {
-        this.emailManagementView = emailManagementView;
-        this.emailDao = emailDao;
-        this.host = host;
-        this.username = username;
-        this.password = password;
-        this.udpNotifier = udpNotifier;
-    }
+    public EmailReceiver(EmailManagementView emailManagementView, EmailDao emailDao, SessionDao sessionDao, 
+            String host, String username, String password, UdpNotifier udpNotifier) {
+this.emailManagementView = emailManagementView;
+this.emailDao = emailDao;
+this.sessionDao = sessionDao;
+this.host = host;
+this.username = username;
+this.password = password;
+this.udpNotifier = udpNotifier;
 
+if (this.sessionDao == null) {
+System.err.println("SessionDao is null in EmailReceiver constructor!");
+}
+}
     public void startReceivingEmails() {
         new Thread(() -> {
             while (running) {
@@ -63,18 +69,22 @@ public class EmailReceiver {
             emailFolder.open(Folder.READ_ONLY);
 
             Message[] messages = emailFolder.getMessages();
-            int limit = Math.min(messages.length, EMAIL_LIMIT);
 
-            for (int i = messages.length - limit; i < messages.length; i++) {
-                Message message = messages[i];
+            for (Message message : messages) {
                 Email email = createEmailFromMessage(message);
                 if (email != null && receivedEmailSubjects.add(email.getSubject())) {
                     emailManagementView.addEmail(email);
-                    udpNotifier.sendNotification("Received email from: " + email.getSenderId());
+                    
+                    // Bỏ qua việc lấy địa chỉ IP
+                    String senderEmail = getEmailFromUserId(email.getSenderId());
+                    
+                    // Gửi thông báo mà không cần địa chỉ IP
+                    udpNotifier.sendNotification("Received email from: " + senderEmail);
+
+                    emailManagementView.refreshEmailList();
                 }
             }
 
-            emailManagementView.refreshEmailList();
             emailFolder.close(false);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error receiving emails: ", e);
@@ -131,5 +141,10 @@ public class EmailReceiver {
     private int getUserIdFromEmail(String email) {
         // Logic để lấy ID người dùng từ email
         return 1; // Thay đổi theo cách bạn lưu trữ ID người dùng
+    }
+
+    private String getEmailFromUserId(int userId) {
+        // Logic để lấy email từ ID người dùng
+        return "example@example.com"; // Thay đổi theo cách bạn lưu trữ email
     }
 }

@@ -247,6 +247,22 @@ public class UserDao {
     }
     
     
+    public String getEmailById(int userId) {
+        String email = null;
+        String query = "SELECT email FROM users WHERE id = ?"; // Giả sử bảng là 'users' và có cột 'email'
 
+        try (Connection conn = DatabaseConnection.getConnection(); // Kết nối tới cơ sở dữ liệu
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                email = rs.getString("email"); // Lấy email từ kết quả
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // Xử lý lỗi
+        }
+
+        return email; // Trả về email hoặc null nếu không tìm thấy
+    }
 
 }

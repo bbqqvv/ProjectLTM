@@ -12,6 +12,7 @@ import javax.mail.Store;
 import javax.mail.internet.MimeMultipart;
 import dao.EmailDao;
 import dao.SessionDao; // Thêm import cho SessionDao
+import dao.UserDao;
 import model.Email;
 import view.EmailManagementView;
 import java.util.logging.Level;
@@ -69,20 +70,33 @@ System.err.println("SessionDao is null in EmailReceiver constructor!");
             emailFolder.open(Folder.READ_ONLY);
 
             Message[] messages = emailFolder.getMessages();
+            
+            // Chỉ lấy tối đa 50 email mới nhất
+            int maxEmailsToLoad = 10;
+            int startIndex = Math.max(0, messages.length - maxEmailsToLoad);
 
-            for (Message message : messages) {
+            boolean newEmailReceived = false; // Biến đánh dấu xem có email mới không
+
+            // Lặp qua các email từ mới nhất đến cũ nhất
+            for (int i = messages.length - 1; i >= startIndex; i--) {
+                Message message = messages[i];
                 Email email = createEmailFromMessage(message);
                 if (email != null && receivedEmailSubjects.add(email.getSubject())) {
                     emailManagementView.addEmail(email);
                     
-                    // Bỏ qua việc lấy địa chỉ IP
-                    String senderEmail = getEmailFromUserId(email.getSenderId());
-                    
                     // Gửi thông báo mà không cần địa chỉ IP
+                    String senderEmail = getEmailFromUserId(email.getSenderId());
                     udpNotifier.sendNotification("Received email from: " + senderEmail);
 
-                    emailManagementView.refreshEmailList();
+                    // Thêm ghi log để kiểm tra
+                    System.out.println("Notification sent for email from: " + senderEmail);
+                    newEmailReceived = true; // Đánh dấu là có email mới
                 }
+            }
+
+            // Nếu có email mới, làm mới danh sách email
+            if (newEmailReceived) {
+                emailManagementView.refreshEmailList();
             }
 
             emailFolder.close(false);
@@ -142,9 +156,10 @@ System.err.println("SessionDao is null in EmailReceiver constructor!");
         // Logic để lấy ID người dùng từ email
         return 1; // Thay đổi theo cách bạn lưu trữ ID người dùng
     }
-
+    
     private String getEmailFromUserId(int userId) {
-        // Logic để lấy email từ ID người dùng
-        return "example@example.com"; // Thay đổi theo cách bạn lưu trữ email
+        UserDao userDao = new UserDao(); // Tạo đối tượng UserDao
+        String email = userDao.getEmailById(userId); // Gọi phương thức lấy email từ ID
+        return email != null ? email : "unknown@example.com"; // Trả về email hoặc giá trị mặc định nếu không tìm thấy
     }
 }

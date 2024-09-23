@@ -77,12 +77,14 @@ public class EmailSender {
     }
 
     private boolean isAttachmentValid(String attachmentPath) {
-        boolean isValid = attachmentPath != null && !attachmentPath.isEmpty() && new File(attachmentPath).exists();
+        File file = new File(attachmentPath);
+        boolean isValid = file.exists() && file.isFile() && file.canRead();
         if (!isValid) {
-            System.out.println("Attachment is invalid or does not exist: " + attachmentPath);
+            System.out.println("Attachment is invalid or cannot be read: " + attachmentPath);
         }
         return isValid;
     }
+
     private void addAttachment(Multipart multipart, String attachmentPath) throws MessagingException {
         MimeBodyPart attachmentPart = new MimeBodyPart();
         try {

@@ -7,6 +7,7 @@ import java.util.List;
 import javax.swing.*;
 import controller.EmailController;
 import dao.EmailDao;
+import dao.SessionDao;
 import model.Email;
 import model.Session;
 import model.User;
@@ -26,17 +27,18 @@ public class EmailManagementView {
     private boolean isReceivingEmails = false;
 	private UserIpMapping userIpMapping;
 
-    public EmailManagementView(User user) {
-        this.user = user;
-        this.session = new Session(user.getId(), getUserIpAddress(), user.getEmail());
-        String host = "imap.gmail.com";
-        String username = user.getEmail();
-        String password = user.getPassword();
-        this.emailController = new EmailController(this, host, username, password);
-        initialize();
-        loadEmails();
-    }
-
+	public EmailManagementView(User user) {
+	    this.user = user;
+	    this.session = new Session(user.getId(), getUserIpAddress(), user.getEmail());
+	    // Khởi tạo UserIpMapping
+	    this.userIpMapping = new UserIpMapping(); // Khởi tạo đối tượng
+	    String host = "imap.gmail.com";
+	    String username = user.getEmail();
+	    String password = user.getPassword();
+	    this.emailController = new EmailController(this, host, username, password);
+	    initialize();
+	    loadEmails();
+	}
     private void initialize() {
         frame = new JFrame("Email Management - " + user.getFullname());
         frame.setSize(1200, 800);
@@ -72,11 +74,12 @@ public class EmailManagementView {
                 protected Void doInBackground() {
                     try {
                         EmailDao emailDao = emailController.getEmailDao();
+                        SessionDao sessionDao = new SessionDao(); // Khởi tạo SessionDao
                         udpNotifier = new UdpNotifier(session.getIpAddress(), 9876);
                         udpNotifier.sendNotification("Email received");
                         System.out.println("UDP notification sent.");
 
-                        EmailReceiver emailReceiver = new EmailReceiver(EmailManagementView.this, emailDao, "imap.gmail.com", user.getEmail(), user.getPassword(), udpNotifier);
+                        EmailReceiver emailReceiver = new EmailReceiver(EmailManagementView.this, emailDao, sessionDao, "imap.gmail.com", user.getEmail(), user.getPassword(), udpNotifier);
                         emailReceiver.startReceivingEmails();
                         isReceivingEmails = true;
                         System.out.println("Email receiver started.");
